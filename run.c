@@ -56,12 +56,14 @@ int main(int argc, char **argv)
 
     /* Fill the string vector */
     for (i = 1; i < argc; i++) {
-        args[i - 1] = calloc(strlen(argv[i]) + 1, sizeof(char));
+        size_t line_len = strlen(argv[i]) + 1;
+        args[i - 1] = calloc(line_len, sizeof(char));
         if (!args[i - 1]) {
             perror("calloc error");
             exit(EXIT_FAILURE);
         }
-        strncpy(args[i - 1], argv[i], strlen(argv[i]) + 1);
+        size_t arg_len = strlen(argv[i] + 1);
+        strncpy(args[i - 1], argv[i], arg_len);
     }
 
     /* Fork a process then call execvp on args vector */
