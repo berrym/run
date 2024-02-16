@@ -27,12 +27,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 int main(int argc, char **argv)
 {
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 
     /* Print a usage message */
     if (argc < 2) {
-        fprintf(stderr, "usage: %s command args\n", argv[0]);
+        fprintf(stderr, "usage: %s <command> <args ...>\n", argv[0]);
         exit(EXIT_SUCCESS);
     }
 
@@ -55,15 +55,14 @@ int main(int argc, char **argv)
     }
 
     /* Fill the string vector */
-    for (i = 1; i < argc; i++) {
-        size_t line_len = strlen(argv[i]) + 1;
-        args[i - 1] = calloc(line_len, sizeof(char));
-        if (!args[i - 1]) {
+    for (i = 0; i < argc - 1; i++) {
+        size_t arg_len = strlen(argv[i + 1]) + 1;
+        args[i] = calloc(arg_len, sizeof(char));
+        if (!args[i]) {
             perror("calloc error");
             exit(EXIT_FAILURE);
         }
-        size_t arg_len = strlen(argv[i] + 1);
-        strncpy(args[i - 1], argv[i], arg_len);
+        strncpy(args[i], argv[i + 1], arg_len);
     }
 
     /* Fork a process then call execvp on args vector */
@@ -72,12 +71,15 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
         execvp(args[0], args);
-        perror("couldn't execute");
+        fprintf(stderr, "Errno %d: %s - %s\n", errno, strerror(errno), argv[1]);
         exit(127);
     } else {
         if (waitpid(pid, &status, WNOHANG) < 0) {
-            perror("waitpid error");
-            exit(EXIT_FAILURE);
+            if (errno != EINTR) {
+                perror("waitpid error");
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
         }
     }
 
